@@ -11,6 +11,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 
 /**
@@ -26,20 +27,39 @@ public class Cliente implements Serializable {
     private String razonSocial;
     private String cuit;
     private String direccion;
-    private String ciudad;
+    @ManyToOne
+    private Localidad ciudad;
     private String zona;
+    private String telefono;
     @OneToMany(mappedBy = "cliente")
     private List<Venta>ventas;
 
     public Cliente() {
     }
 
-    public Cliente(String razonSocial, String cuit, String direccion, String ciudad, String zona) {
+    public Cliente(String razonSocial, String cuit, String direccion, Localidad ciudad, String zona, String telefono) {
         this.razonSocial = razonSocial;
         this.cuit = cuit;
         this.direccion = direccion;
         this.ciudad = ciudad;
         this.zona = zona;
+        this.telefono = telefono;
+    }
+
+    public Localidad getCiudad() {
+        return ciudad;
+    }
+
+    public void setCiudad(Localidad ciudad) {
+        this.ciudad = ciudad;
+    }
+
+    public String getTelefono() {
+        return telefono;
+    }
+
+    public void setTelefono(String telefono) {
+        this.telefono = telefono;
     }
 
     public String getRazonSocial() {
@@ -64,14 +84,6 @@ public class Cliente implements Serializable {
 
     public void setDireccion(String direccion) {
         this.direccion = direccion;
-    }
-
-    public String getCiudad() {
-        return ciudad;
-    }
-
-    public void setCiudad(String ciudad) {
-        this.ciudad = ciudad;
     }
 
     public String getZona() {
