@@ -28,26 +28,45 @@ public class Venta implements Serializable {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
     @Temporal(javax.persistence.TemporalType.TIMESTAMP)
-    private Calendar fehca;
+    private Calendar fecha;
     @ManyToOne
     private Cliente cliente;
     @OneToMany
     private List<Producto> productos;
+    private double porcentajeDescuento;
 
     public Venta() {
     }
 
-    public Venta(Calendar fehca, Cliente cliente) {
-        this.fehca = fehca;
+    public Venta(Calendar fecha, Cliente cliente, List<Producto> productos, double porcentajeDescuento) {
+        this.fecha = fecha;
         this.cliente = cliente;
+        this.productos = productos;
+        this.porcentajeDescuento = porcentajeDescuento;
     }
 
-    public Calendar getFehca() {
-        return fehca;
+    public double getPorcentajeDescuento() {
+        return porcentajeDescuento;
     }
 
-    public void setFehca(Calendar fehca) {
-        this.fehca = fehca;
+    public void setPorcentajeDescuento(double porcentajeDescuento) {
+        this.porcentajeDescuento = porcentajeDescuento;
+    }
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
+
+    public Calendar getFecha() {
+        return fecha;
+    }
+
+    public void setFecha(Calendar fecha) {
+        this.fecha = fecha;
     }
 
     public Cliente getCliente() {
@@ -64,14 +83,6 @@ public class Venta implements Serializable {
 
     public void setProductos(List<Producto> productos) {
         this.productos = productos;
-    }
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
     }
 
     @Override
@@ -92,6 +103,17 @@ public class Venta implements Serializable {
             return false;
         }
         return true;
+    }
+
+//    ESTA FUNCION SIRVE PARA CONOCER EL PRECIO 
+//            TOTAL DE LA VENTA REALIZADA, A PARTIR DE LOS PRECIOS DE LOS PRODUCTOS;   
+    public double costoTotal() {
+        double total = 0;
+        for (Producto producto : this.getProductos()) {
+            total = +producto.getPrecioVenta();
+        }
+        total = -(total * this.porcentajeDescuento / 100);
+        return total;
     }
 
     @Override

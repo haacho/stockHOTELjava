@@ -22,7 +22,7 @@ import persistencia.sistema;
 
 /**
  *
- * @author marcelo
+ * @author hacho
  */
 public class ProductoJpaController implements Serializable {
 
@@ -35,19 +35,20 @@ public class ProductoJpaController implements Serializable {
         return emf.createEntityManager();
     }
 
-    public void create(String codigo, String descripcion, Integer cantidad, Double precioCosto, Double precioVenta, Integer idCategoria) throws Exception {
-        validate(codigo, descripcion, cantidad, precioCosto, precioVenta, idCategoria, null);
-        create(new Producto(codigo, descripcion,cantidad, precioCosto, precioVenta, sistema.CATEGORIA_JPA_CONTROLLER.findCategoria(idCategoria)));
+    public void create(String codigo, String descripcion, Integer cantidad, Double precioCosto, Double precioVenta, Integer stockMinimo, Integer idCategoria) throws Exception {
+        validate(codigo, descripcion, cantidad, precioCosto, precioVenta, idCategoria, stockMinimo, null);
+        create(new Producto(codigo, descripcion,cantidad, precioCosto, precioVenta, stockMinimo, sistema.CATEGORIA_JPA_CONTROLLER.findCategoria(idCategoria)));
     }
 
-    public void edit(Integer id, String codigo, String descripcion, Integer cantidad, Double precioCosto, Double precioVenta, Integer idCategoria) throws Exception {
+    public void edit(Integer id, String codigo, String descripcion, Integer cantidad, Double precioCosto, Double precioVenta, Integer stockMinimo, Integer idCategoria) throws Exception {
         if (findProducto(id) == null) {
             throw new Exception("Producto no encontrado");
         }
         Producto p = findProducto(id);
-        validate(codigo, descripcion, cantidad, precioCosto, precioVenta, idCategoria, p);
+        validate(codigo, descripcion, cantidad, precioCosto, precioVenta, idCategoria, stockMinimo, p);
         p.setCategoria(sistema.CATEGORIA_JPA_CONTROLLER.findCategoria(idCategoria));
         p.setCodigo(codigo);
+        p.setStockMinimo(stockMinimo);
         p.setDescripcion(descripcion);
         p.setCantidad(cantidad);
         p.setPrecioCosto(precioCosto);
@@ -55,7 +56,7 @@ public class ProductoJpaController implements Serializable {
         edit(p);
     }
 
-    public void validate(String codigo, String descripcion, Integer cantidad, Double precioCosto, Double precioVenta, Integer idCategoria, Producto p) throws Exception {
+    public void validate(String codigo, String descripcion, Integer cantidad, Double precioCosto, Double precioVenta, Integer idCategoria, Integer stockMinimo, Producto p) throws Exception {
         if (sistema.CATEGORIA_JPA_CONTROLLER.findCategoria(idCategoria) == null) {
             throw new Exception("Seleccione una categoria");
         }
@@ -65,8 +66,11 @@ public class ProductoJpaController implements Serializable {
         if (descripcion.equals("")) {
             throw new Exception("Ingrese una descripción");
         }
-        if (cantidad < 1) {
-            throw new Exception("La cantidad de productos debe ser mayor o igual a 1");
+        if (cantidad < 0) {
+            throw new Exception("La cantidad de productos debe ser mayor o igual a 0");
+        }
+        if (stockMinimo < 0) {
+            throw new Exception("El stock mínimo de productos debe ser mayor o igual a 0");
         }
         if (precioCosto == null || precioCosto < 1) {
             throw new Exception("Ingrese un precio de costo");
@@ -118,7 +122,7 @@ public class ProductoJpaController implements Serializable {
         }
         return res;
     }
-
+    
     public void create(Producto producto) {
         EntityManager em = null;
         try {
@@ -251,5 +255,5 @@ public class ProductoJpaController implements Serializable {
             em.close();
         }
     }
-
+    
 }

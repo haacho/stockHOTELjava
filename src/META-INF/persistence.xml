@@ -6,6 +6,9 @@
     <class>modelo.Producto</class>
     <class>modelo.Venta</class>
     <class>modelo.Cliente</class>
+    <class>modelo.Pais</class>
+    <class>modelo.Provincia</class>
+    <class>modelo.Localidad</class>
     <properties>
       <property name="javax.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/stock"/>
       <property name="javax.persistence.jdbc.password" value="a"/>

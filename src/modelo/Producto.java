@@ -28,21 +28,32 @@ public class Producto implements Serializable {
     private Integer cantidad;
     private Double precioCosto;
     private Double precioVenta;
+    private Integer stockMinimo;
     @ManyToOne
     private Categoria categoria;
 
     public Producto() {
     }
 
-    public Producto(String codigo, String descripcion, Integer cantidad, Double precioCosto, Double precioVenta, Categoria categoria) {
+    public Producto(String codigo, String descripcion, Integer cantidad, Double precioCosto, Double precioVenta, Integer stockMinimo, Categoria categoria) {
         this.codigo = codigo;
         this.descripcion = descripcion;
         this.cantidad = cantidad;
         this.precioCosto = precioCosto;
         this.precioVenta = precioVenta;
+        this.stockMinimo = stockMinimo;
         this.categoria = categoria;
     }
 
+    public Integer getStockMinimo() {
+        return stockMinimo;
+    }
+
+    public void setStockMinimo(Integer stockMinimo) {
+        this.stockMinimo = stockMinimo;
+    }
+
+    
     public Integer getCantidad() {
         return cantidad;
     }

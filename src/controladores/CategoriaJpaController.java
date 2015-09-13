@@ -22,7 +22,7 @@ import modelo.Categoria_;
 
 /**
  *
- * @author marcelo
+ * @author hacho
  */
 public class CategoriaJpaController implements Serializable {
 
