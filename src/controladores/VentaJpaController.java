@@ -16,8 +16,9 @@ import javax.persistence.EntityNotFoundException;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
 import modelo.Cliente;
-import modelo.Producto;
+import modelo.RenglonVenta;
 import modelo.Venta;
+import persistencia.sistema;
 
 /**
  *
@@ -34,27 +35,34 @@ public class VentaJpaController implements Serializable {
         return emf.createEntityManager();
     }
 
-    public void create(Calendar fecha, Cliente cliente, List<Producto> productos, double porcentajeDescuento) throws Exception {
+    public void create(Calendar fecha, Integer idCliente, List<RenglonVenta> productos, double porcentajeDescuento) throws Exception {
         validate(productos);
-        create(new Venta(fecha, cliente, productos, porcentajeDescuento));
+        persistirRenglones(productos);
+        create(new Venta(fecha, sistema.CLIENTE_JPA_CONTROLLER.findCliente(idCliente), productos, porcentajeDescuento));
     }
 
-    public void edit(Integer id, List<Producto> productos) throws Exception {
+    public void edit(Integer id, List<RenglonVenta> productos) throws Exception {
         if (findVenta(id) == null) {
             throw new Exception("Venta no encontrada");
         }
         Venta c = findVenta(id);
         validate(productos);
-        c.setProductos(productos);
+        c.setRenglones(productos);
         edit(c);
     }
 
-    public void validate(List<Producto> productos) throws Exception {
+    public void validate(List<RenglonVenta> productos) throws Exception {
         if (productos.isEmpty()) {
             throw new Exception("La lista de productos se encuentra vacía");
-        }        
+        }
     }
-    
+
+    private void persistirRenglones(List<RenglonVenta> productos) {
+        for (RenglonVenta unRenglon : productos) {
+            sistema.RENGLON_JPA_CONTROLLER.create(unRenglon);
+        }
+    }
+
     public void create(Venta venta) {
         EntityManager em = null;
         try {
@@ -187,5 +195,5 @@ public class VentaJpaController implements Serializable {
             em.close();
         }
     }
-    
+
 }
