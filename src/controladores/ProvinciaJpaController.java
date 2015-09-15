@@ -24,7 +24,7 @@ import persistencia.sistema;
 
 /**
  *
- * @author hacho
+ * @author marcelo
  */
 public class ProvinciaJpaController implements Serializable {
 
@@ -38,7 +38,7 @@ public class ProvinciaJpaController implements Serializable {
     }
 
     public void create(String nombre, Integer idPais) throws Exception {
-        validate(nombre, null, idPais);
+        validate(nombre, idPais, null);
         create(new Provincia(nombre, sistema.PAIS_JPA_CONTROLLER.findPais(idPais)));
     }
 
@@ -46,34 +46,39 @@ public class ProvinciaJpaController implements Serializable {
         if (findProvincia(id) == null) {
             throw new Exception("Provincia no encontrada");
         }
-        Provincia c = findProvincia(id);
-        validate(nombre, c, idPais);
-        c.setNombre(nombre);
-        edit(c);
+        Provincia p = findProvincia(id);
+        validate(nombre, idPais, p);
+        p.setNombre(nombre);
+        p.setPais(sistema.PAIS_JPA_CONTROLLER.findPais(idPais));
+        edit(p);
     }
 
-    public void validate(String nombre, Provincia c, Integer idPais) throws Exception {
+    public void validate(String nombre, Integer idPais, Provincia p) throws Exception {
         if (nombre.equals("")) {
             throw new Exception("Ingrese un nombre");
         }
-        Provincia unaProvincia = find(nombre);
-        if ((unaProvincia != null) && (unaProvincia.getUnPais().getId() == idPais)) {
-            throw new Exception("La provincia " + nombre + " ya existe");
+        if (sistema.PAIS_JPA_CONTROLLER.findPais(idPais) == null) {
+            throw new Exception("Seleccione un pais");
+        }
+        if (p == null) {
+            if (find(nombre, idPais) != null) {
+                throw new Exception("La provincia " + nombre + " ya existe");
+            }
         } else {
-            if (!c.getNombre().equals(nombre) && find(nombre) != null) {
+            if (!p.getNombre().equals(nombre) && find(nombre, idPais) != null) {
                 throw new Exception("La provincia " + nombre + " ya existe");
             }
         }
     }
 
-    public Provincia find(String nombre) {
+    public Provincia find(String nombre, Integer idPais) {
         EntityManager em = getEntityManager();
         CriteriaBuilder cb = em.getCriteriaBuilder();
         Provincia res = null;
         try {
             CriteriaQuery cq = cb.createQuery();
             Root e = cq.from(Provincia.class);
-            cq.where(cb.equal(e.get(Provincia_.nombre), nombre));
+            cq.where(cb.and(cb.equal(e.get(Provincia_.nombre), nombre), cb.equal(e.get(Provincia_.pais), sistema.PAIS_JPA_CONTROLLER.findPais(idPais))));
             Query query = em.createQuery(cq);
             List<Provincia> aux = query.getResultList();
             res = aux.isEmpty() ? null : (Provincia) aux.get(0);
@@ -91,10 +96,10 @@ public class ProvinciaJpaController implements Serializable {
         try {
             em = getEntityManager();
             em.getTransaction().begin();
-            Pais unPais = provincia.getUnPais();
-            if (unPais != null) {
-                unPais = em.getReference(unPais.getClass(), unPais.getId());
-                provincia.setUnPais(unPais);
+            Pais pais = provincia.getPais();
+            if (pais != null) {
+                pais = em.getReference(pais.getClass(), pais.getId());
+                provincia.setPais(pais);
             }
             List<Localidad> attachedLocalidades = new ArrayList<Localidad>();
             for (Localidad localidadesLocalidadToAttach : provincia.getLocalidades()) {
@@ -103,17 +108,17 @@ public class ProvinciaJpaController implements Serializable {
             }
             provincia.setLocalidades(attachedLocalidades);
             em.persist(provincia);
-            if (unPais != null) {
-                unPais.getProvincias().add(provincia);
-                unPais = em.merge(unPais);
+            if (pais != null) {
+                pais.getProvincias().add(provincia);
+                pais = em.merge(pais);
             }
             for (Localidad localidadesLocalidad : provincia.getLocalidades()) {
-                Provincia oldUnaProvinciaOfLocalidadesLocalidad = localidadesLocalidad.getUnaProvincia();
-                localidadesLocalidad.setUnaProvincia(provincia);
+                Provincia oldProvinciaOfLocalidadesLocalidad = localidadesLocalidad.getProvincia();
+                localidadesLocalidad.setProvincia(provincia);
                 localidadesLocalidad = em.merge(localidadesLocalidad);
-                if (oldUnaProvinciaOfLocalidadesLocalidad != null) {
-                    oldUnaProvinciaOfLocalidadesLocalidad.getLocalidades().remove(localidadesLocalidad);
-                    oldUnaProvinciaOfLocalidadesLocalidad = em.merge(oldUnaProvinciaOfLocalidadesLocalidad);
+                if (oldProvinciaOfLocalidadesLocalidad != null) {
+                    oldProvinciaOfLocalidadesLocalidad.getLocalidades().remove(localidadesLocalidad);
+                    oldProvinciaOfLocalidadesLocalidad = em.merge(oldProvinciaOfLocalidadesLocalidad);
                 }
             }
             em.getTransaction().commit();
@@ -130,13 +135,13 @@ public class ProvinciaJpaController implements Serializable {
             em = getEntityManager();
             em.getTransaction().begin();
             Provincia persistentProvincia = em.find(Provincia.class, provincia.getId());
-            Pais unPaisOld = persistentProvincia.getUnPais();
-            Pais unPaisNew = provincia.getUnPais();
+            Pais paisOld = persistentProvincia.getPais();
+            Pais paisNew = provincia.getPais();
             List<Localidad> localidadesOld = persistentProvincia.getLocalidades();
             List<Localidad> localidadesNew = provincia.getLocalidades();
-            if (unPaisNew != null) {
-                unPaisNew = em.getReference(unPaisNew.getClass(), unPaisNew.getId());
-                provincia.setUnPais(unPaisNew);
+            if (paisNew != null) {
+                paisNew = em.getReference(paisNew.getClass(), paisNew.getId());
+                provincia.setPais(paisNew);
             }
             List<Localidad> attachedLocalidadesNew = new ArrayList<Localidad>();
             for (Localidad localidadesNewLocalidadToAttach : localidadesNew) {
@@ -146,28 +151,28 @@ public class ProvinciaJpaController implements Serializable {
             localidadesNew = attachedLocalidadesNew;
             provincia.setLocalidades(localidadesNew);
             provincia = em.merge(provincia);
-            if (unPaisOld != null && !unPaisOld.equals(unPaisNew)) {
-                unPaisOld.getProvincias().remove(provincia);
-                unPaisOld = em.merge(unPaisOld);
+            if (paisOld != null && !paisOld.equals(paisNew)) {
+                paisOld.getProvincias().remove(provincia);
+                paisOld = em.merge(paisOld);
             }
-            if (unPaisNew != null && !unPaisNew.equals(unPaisOld)) {
-                unPaisNew.getProvincias().add(provincia);
-                unPaisNew = em.merge(unPaisNew);
+            if (paisNew != null && !paisNew.equals(paisOld)) {
+                paisNew.getProvincias().add(provincia);
+                paisNew = em.merge(paisNew);
             }
             for (Localidad localidadesOldLocalidad : localidadesOld) {
                 if (!localidadesNew.contains(localidadesOldLocalidad)) {
-                    localidadesOldLocalidad.setUnaProvincia(null);
+                    localidadesOldLocalidad.setProvincia(null);
                     localidadesOldLocalidad = em.merge(localidadesOldLocalidad);
                 }
             }
             for (Localidad localidadesNewLocalidad : localidadesNew) {
                 if (!localidadesOld.contains(localidadesNewLocalidad)) {
-                    Provincia oldUnaProvinciaOfLocalidadesNewLocalidad = localidadesNewLocalidad.getUnaProvincia();
-                    localidadesNewLocalidad.setUnaProvincia(provincia);
+                    Provincia oldProvinciaOfLocalidadesNewLocalidad = localidadesNewLocalidad.getProvincia();
+                    localidadesNewLocalidad.setProvincia(provincia);
                     localidadesNewLocalidad = em.merge(localidadesNewLocalidad);
-                    if (oldUnaProvinciaOfLocalidadesNewLocalidad != null && !oldUnaProvinciaOfLocalidadesNewLocalidad.equals(provincia)) {
-                        oldUnaProvinciaOfLocalidadesNewLocalidad.getLocalidades().remove(localidadesNewLocalidad);
-                        oldUnaProvinciaOfLocalidadesNewLocalidad = em.merge(oldUnaProvinciaOfLocalidadesNewLocalidad);
+                    if (oldProvinciaOfLocalidadesNewLocalidad != null && !oldProvinciaOfLocalidadesNewLocalidad.equals(provincia)) {
+                        oldProvinciaOfLocalidadesNewLocalidad.getLocalidades().remove(localidadesNewLocalidad);
+                        oldProvinciaOfLocalidadesNewLocalidad = em.merge(oldProvinciaOfLocalidadesNewLocalidad);
                     }
                 }
             }
@@ -200,14 +205,14 @@ public class ProvinciaJpaController implements Serializable {
             } catch (EntityNotFoundException enfe) {
                 throw new NonexistentEntityException("The provincia with id " + id + " no longer exists.", enfe);
             }
-            Pais unPais = provincia.getUnPais();
-            if (unPais != null) {
-                unPais.getProvincias().remove(provincia);
-                unPais = em.merge(unPais);
+            Pais pais = provincia.getPais();
+            if (pais != null) {
+                pais.getProvincias().remove(provincia);
+                pais = em.merge(pais);
             }
             List<Localidad> localidades = provincia.getLocalidades();
             for (Localidad localidadesLocalidad : localidades) {
-                localidadesLocalidad.setUnaProvincia(null);
+                localidadesLocalidad.setProvincia(null);
                 localidadesLocalidad = em.merge(localidadesLocalidad);
             }
             em.remove(provincia);

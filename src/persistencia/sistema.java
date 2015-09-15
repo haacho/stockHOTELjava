@@ -13,4 +13,5 @@ public class sistema {
     public static final LocalidadJpaController LOCALIDAD_JPA_CONTROLLER = new LocalidadJpaController(EMF);
     public static final VentaJpaController VENTA_JPA_CONTROLLER = new VentaJpaController(EMF);
     public static final ClienteJpaController CLIENTE_JPA_CONTROLLER = new ClienteJpaController(EMF);
+    public static final DireccionJpaController DIRECCION_JPA_CONTROLLER = new DireccionJpaController(EMF);
 }

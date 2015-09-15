@@ -20,16 +20,17 @@ import javax.persistence.OneToMany;
  */
 @Entity
 public class Localidad implements Serializable {
+
     private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
-     private String nombre;
+    private String nombre;
     private String prefTelefonico;
     private String codPostal;
     @ManyToOne
-    private Provincia unaProvincia;
-    @OneToMany(mappedBy = "ciudad")
+    private Provincia provincia;
+    @OneToMany
     private List<Cliente> clientes;
 
     public Localidad() {
@@ -39,9 +40,9 @@ public class Localidad implements Serializable {
         this.nombre = nombre;
         this.prefTelefonico = prefTelefonico;
         this.codPostal = codPostal;
-        this.unaProvincia = unaProvincia;
-    }        
-        
+        this.provincia = unaProvincia;
+    }
+
     public Integer getId() {
         return id;
     }
@@ -74,12 +75,12 @@ public class Localidad implements Serializable {
         this.codPostal = codPostal;
     }
 
-    public Provincia getUnaProvincia() {
-        return unaProvincia;
+    public Provincia getProvincia() {
+        return provincia;
     }
 
-    public void setUnaProvincia(Provincia unaProvincia) {
-        this.unaProvincia = unaProvincia;
+    public void setProvincia(Provincia provincia) {
+        this.provincia = provincia;
     }
 
     public List<Cliente> getClientes() {
@@ -114,5 +115,5 @@ public class Localidad implements Serializable {
     public String toString() {
         return "modelo.Localidad[ id=" + id + " ]";
     }
-    
+
 }

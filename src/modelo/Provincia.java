@@ -26,16 +26,16 @@ public class Provincia implements Serializable {
     private Integer id;
     private String nombre;
     @ManyToOne
-    private Pais unPais;
-    @OneToMany(mappedBy = "unaProvincia")
+    private Pais pais;
+    @OneToMany(mappedBy = "provincia")
     private List<Localidad> localidades;
 
     public Provincia() {
     }
 
-    public Provincia(String nombre, Pais unPais) {
+    public Provincia(String nombre, Pais pais) {
         this.nombre = nombre;
-        this.unPais = unPais;
+        this.pais = pais;
     }        
 
     public Integer getId() {
@@ -54,12 +54,12 @@ public class Provincia implements Serializable {
         this.nombre = nombre;
     }
 
-    public Pais getUnPais() {
-        return unPais;
+    public Pais getPais() {
+        return pais;
     }
 
-    public void setUnPais(Pais unPais) {
-        this.unPais = unPais;
+    public void setPais(Pais pais) {
+        this.pais = pais;
     }
 
     public List<Localidad> getLocalidades() {
