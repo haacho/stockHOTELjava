@@ -27,7 +27,7 @@ public class Pais implements Serializable {
     private String nombre;
     private String gentilicio;
     private String prefTelefonico;
-    @OneToMany(mappedBy = "unPais")
+    @OneToMany(mappedBy = "pais")
     private List<Provincia> provincias;
 
     public Pais() {

@@ -40,26 +40,28 @@ public class PaisJpaController implements Serializable {
         create(new Pais(nombre, gentilicio, prefTelefonico));
     }
 
-    public void edit(Integer id, String nombre) throws Exception {
+    public void edit(Integer id, String nombre, String gentilicio, String prefTelefonico) throws Exception {
         if (findPais(id) == null) {
             throw new Exception("País no encontrado");
         }
-        Pais c = findPais(id);
-        validate(nombre, c);
-        c.setNombre(nombre);
-        edit(c);
+        Pais p = findPais(id);
+        validate(nombre, p);
+        p.setNombre(nombre);
+        p.setGentilicio(gentilicio);
+        p.setPrefTelefonico(prefTelefonico);
+        edit(p);
     }
 
-    public void validate(String nombre, Pais c) throws Exception {
+    public void validate(String nombre, Pais p) throws Exception {
         if (nombre.equals("")) {
             throw new Exception("Ingrese un nombre");
         }
-        if (c == null) {
+        if (p == null) {
             if (find(nombre) != null) {
                 throw new Exception("El país " + nombre + " ya existe");
             }
         } else {
-            if (!c.getNombre().equals(nombre) && find(nombre) != null) {
+            if (!p.getNombre().equals(nombre) && find(nombre) != null) {
                 throw new Exception("El país " + nombre + " ya existe");
             }
         }
@@ -81,7 +83,7 @@ public class PaisJpaController implements Serializable {
         }
         return res;
     }
-    
+
     public void create(Pais pais) {
         if (pais.getProvincias() == null) {
             pais.setProvincias(new ArrayList<Provincia>());
@@ -98,8 +100,8 @@ public class PaisJpaController implements Serializable {
             pais.setProvincias(attachedProvincias);
             em.persist(pais);
             for (Provincia provinciasProvincia : pais.getProvincias()) {
-                Pais oldUnPaisOfProvinciasProvincia = provinciasProvincia.getUnPais();
-                provinciasProvincia.setUnPais(pais);
+                Pais oldUnPaisOfProvinciasProvincia = provinciasProvincia.getPais();
+                provinciasProvincia.setPais(pais);
                 provinciasProvincia = em.merge(provinciasProvincia);
                 if (oldUnPaisOfProvinciasProvincia != null) {
                     oldUnPaisOfProvinciasProvincia.getProvincias().remove(provinciasProvincia);
@@ -132,14 +134,14 @@ public class PaisJpaController implements Serializable {
             pais = em.merge(pais);
             for (Provincia provinciasOldProvincia : provinciasOld) {
                 if (!provinciasNew.contains(provinciasOldProvincia)) {
-                    provinciasOldProvincia.setUnPais(null);
+                    provinciasOldProvincia.setPais(null);
                     provinciasOldProvincia = em.merge(provinciasOldProvincia);
                 }
             }
             for (Provincia provinciasNewProvincia : provinciasNew) {
                 if (!provinciasOld.contains(provinciasNewProvincia)) {
-                    Pais oldUnPaisOfProvinciasNewProvincia = provinciasNewProvincia.getUnPais();
-                    provinciasNewProvincia.setUnPais(pais);
+                    Pais oldUnPaisOfProvinciasNewProvincia = provinciasNewProvincia.getPais();
+                    provinciasNewProvincia.setPais(pais);
                     provinciasNewProvincia = em.merge(provinciasNewProvincia);
                     if (oldUnPaisOfProvinciasNewProvincia != null && !oldUnPaisOfProvinciasNewProvincia.equals(pais)) {
                         oldUnPaisOfProvinciasNewProvincia.getProvincias().remove(provinciasNewProvincia);
@@ -178,7 +180,7 @@ public class PaisJpaController implements Serializable {
             }
             List<Provincia> provincias = pais.getProvincias();
             for (Provincia provinciasProvincia : provincias) {
-                provinciasProvincia.setUnPais(null);
+                provinciasProvincia.setPais(null);
                 provinciasProvincia = em.merge(provinciasProvincia);
             }
             em.remove(pais);
@@ -235,5 +237,5 @@ public class PaisJpaController implements Serializable {
             em.close();
         }
     }
-    
+
 }
