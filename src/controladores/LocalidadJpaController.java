@@ -7,75 +7,78 @@ package controladores;
 
 import controladores.exceptions.NonexistentEntityException;
 import java.io.Serializable;
-import javax.persistence.Query;
-import javax.persistence.EntityNotFoundException;
-import javax.persistence.criteria.CriteriaQuery;
-import javax.persistence.criteria.Root;
-import modelo.Provincia;
-import modelo.Cliente;
-import java.util.ArrayList;
 import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.Query;
+import javax.persistence.EntityNotFoundException;
 import javax.persistence.criteria.CriteriaBuilder;
+import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Root;
 import modelo.Localidad;
 import modelo.Localidad_;
+import modelo.Provincia;
 import persistencia.sistema;
 
 /**
  *
- * @author hacho
+ * @author marcelo
  */
 public class LocalidadJpaController implements Serializable {
-
+    
     public LocalidadJpaController(EntityManagerFactory emf) {
         this.emf = emf;
     }
     private EntityManagerFactory emf = null;
-
+    
     public EntityManager getEntityManager() {
         return emf.createEntityManager();
     }
-
+    
     public void create(String nombre, String prefTelefonico, String codPostal, Integer idProvincia) throws Exception {
-        validate(nombre, null, idProvincia);
+        validate(nombre, idProvincia, null);
         create(new Localidad(nombre, prefTelefonico, codPostal, sistema.PROVINCIA_JPA_CONTROLLER.findProvincia(idProvincia)));
     }
-
+    
     public void edit(Integer id, String nombre, String prefTelefonico, String codPostal, Integer idProvincia) throws Exception {
         if (findLocalidad(id) == null) {
             throw new Exception("Localidad no encontrada");
         }
-        Localidad c = findLocalidad(id);
-        validate(nombre, c, idProvincia);
-        c.setNombre(nombre);
-        edit(c);
+        Localidad l = findLocalidad(id);
+        validate(nombre, idProvincia, l);
+        l.setCodPostal(codPostal);
+        l.setNombre(nombre);
+        l.setPrefTelefonico(prefTelefonico);
+        l.setProvincia(sistema.PROVINCIA_JPA_CONTROLLER.findProvincia(idProvincia));
+        edit(l);
     }
-
-    public void validate(String nombre, Localidad c, Integer idProvincia) throws Exception {
+    
+    public void validate(String nombre, Integer idProvincia, Localidad l) throws Exception {
         if (nombre.equals("")) {
-            throw new Exception("Ingrese el nombre");
+            throw new Exception("Ingrese un nombre");
         }
-        if (c == null) { 
-            Localidad unaLocalidad = find(nombre);
-            if ((unaLocalidad != null) && (unaLocalidad.getUnaProvincia().getId() == idProvincia)) {
+        if (sistema.PROVINCIA_JPA_CONTROLLER.findProvincia(idProvincia) == null) {
+            throw new Exception("Seleccione una provincia");
+        }
+        if (l == null) {
+            if (find(nombre, idProvincia) != null) {
                 throw new Exception("La localidad " + nombre + " ya existe");
             }
         } else {
-            if (!c.getNombre().equals(nombre) && find(nombre) != null) {
+            if (!l.getNombre().equals(nombre) && find(nombre, idProvincia) != null) {
                 throw new Exception("La localidad " + nombre + " ya existe");
             }
         }
     }
-
-    public Localidad find(String nombre) {
+    
+    public Localidad find(String nombre, Integer idProvincia) {
         EntityManager em = getEntityManager();
         CriteriaBuilder cb = em.getCriteriaBuilder();
         Localidad res = null;
         try {
             CriteriaQuery cq = cb.createQuery();
-            Root e = cq.from(Cliente.class);
-            cq.where(cb.equal(e.get(Localidad_.nombre), nombre));
+            Root e = cq.from(Localidad.class);
+            cq.where(cb.and(cb.equal(e.get(Localidad_.nombre), nombre), cb.equal(e.get(Localidad_.provincia), sistema.PROVINCIA_JPA_CONTROLLER.findProvincia(idProvincia))));
             Query query = em.createQuery(cq);
             List<Localidad> aux = query.getResultList();
             res = aux.isEmpty() ? null : (Localidad) aux.get(0);
@@ -86,37 +89,19 @@ public class LocalidadJpaController implements Serializable {
     }
     
     public void create(Localidad localidad) {
-        if (localidad.getClientes() == null) {
-            localidad.setClientes(new ArrayList<Cliente>());
-        }
         EntityManager em = null;
         try {
             em = getEntityManager();
             em.getTransaction().begin();
-            Provincia unaProvincia = localidad.getUnaProvincia();
-            if (unaProvincia != null) {
-                unaProvincia = em.getReference(unaProvincia.getClass(), unaProvincia.getId());
-                localidad.setUnaProvincia(unaProvincia);
+            Provincia provincia = localidad.getProvincia();
+            if (provincia != null) {
+                provincia = em.getReference(provincia.getClass(), provincia.getId());
+                localidad.setProvincia(provincia);
             }
-            List<Cliente> attachedClientes = new ArrayList<Cliente>();
-            for (Cliente clientesClienteToAttach : localidad.getClientes()) {
-                clientesClienteToAttach = em.getReference(clientesClienteToAttach.getClass(), clientesClienteToAttach.getId());
-                attachedClientes.add(clientesClienteToAttach);
-            }
-            localidad.setClientes(attachedClientes);
             em.persist(localidad);
-            if (unaProvincia != null) {
-                unaProvincia.getLocalidades().add(localidad);
-                unaProvincia = em.merge(unaProvincia);
-            }
-            for (Cliente clientesCliente : localidad.getClientes()) {
-                Localidad oldCiudadOfClientesCliente = clientesCliente.getCiudad();
-                clientesCliente.setCiudad(localidad);
-                clientesCliente = em.merge(clientesCliente);
-                if (oldCiudadOfClientesCliente != null) {
-                    oldCiudadOfClientesCliente.getClientes().remove(clientesCliente);
-                    oldCiudadOfClientesCliente = em.merge(oldCiudadOfClientesCliente);
-                }
+            if (provincia != null) {
+                provincia.getLocalidades().add(localidad);
+                provincia = em.merge(provincia);
             }
             em.getTransaction().commit();
         } finally {
@@ -125,53 +110,27 @@ public class LocalidadJpaController implements Serializable {
             }
         }
     }
-
+    
     public void edit(Localidad localidad) throws NonexistentEntityException, Exception {
         EntityManager em = null;
         try {
             em = getEntityManager();
             em.getTransaction().begin();
             Localidad persistentLocalidad = em.find(Localidad.class, localidad.getId());
-            Provincia unaProvinciaOld = persistentLocalidad.getUnaProvincia();
-            Provincia unaProvinciaNew = localidad.getUnaProvincia();
-            List<Cliente> clientesOld = persistentLocalidad.getClientes();
-            List<Cliente> clientesNew = localidad.getClientes();
-            if (unaProvinciaNew != null) {
-                unaProvinciaNew = em.getReference(unaProvinciaNew.getClass(), unaProvinciaNew.getId());
-                localidad.setUnaProvincia(unaProvinciaNew);
+            Provincia provinciaOld = persistentLocalidad.getProvincia();
+            Provincia provinciaNew = localidad.getProvincia();
+            if (provinciaNew != null) {
+                provinciaNew = em.getReference(provinciaNew.getClass(), provinciaNew.getId());
+                localidad.setProvincia(provinciaNew);
             }
-            List<Cliente> attachedClientesNew = new ArrayList<Cliente>();
-            for (Cliente clientesNewClienteToAttach : clientesNew) {
-                clientesNewClienteToAttach = em.getReference(clientesNewClienteToAttach.getClass(), clientesNewClienteToAttach.getId());
-                attachedClientesNew.add(clientesNewClienteToAttach);
-            }
-            clientesNew = attachedClientesNew;
-            localidad.setClientes(clientesNew);
             localidad = em.merge(localidad);
-            if (unaProvinciaOld != null && !unaProvinciaOld.equals(unaProvinciaNew)) {
-                unaProvinciaOld.getLocalidades().remove(localidad);
-                unaProvinciaOld = em.merge(unaProvinciaOld);
+            if (provinciaOld != null && !provinciaOld.equals(provinciaNew)) {
+                provinciaOld.getLocalidades().remove(localidad);
+                provinciaOld = em.merge(provinciaOld);
             }
-            if (unaProvinciaNew != null && !unaProvinciaNew.equals(unaProvinciaOld)) {
-                unaProvinciaNew.getLocalidades().add(localidad);
-                unaProvinciaNew = em.merge(unaProvinciaNew);
-            }
-            for (Cliente clientesOldCliente : clientesOld) {
-                if (!clientesNew.contains(clientesOldCliente)) {
-                    clientesOldCliente.setCiudad(null);
-                    clientesOldCliente = em.merge(clientesOldCliente);
-                }
-            }
-            for (Cliente clientesNewCliente : clientesNew) {
-                if (!clientesOld.contains(clientesNewCliente)) {
-                    Localidad oldCiudadOfClientesNewCliente = clientesNewCliente.getCiudad();
-                    clientesNewCliente.setCiudad(localidad);
-                    clientesNewCliente = em.merge(clientesNewCliente);
-                    if (oldCiudadOfClientesNewCliente != null && !oldCiudadOfClientesNewCliente.equals(localidad)) {
-                        oldCiudadOfClientesNewCliente.getClientes().remove(clientesNewCliente);
-                        oldCiudadOfClientesNewCliente = em.merge(oldCiudadOfClientesNewCliente);
-                    }
-                }
+            if (provinciaNew != null && !provinciaNew.equals(provinciaOld)) {
+                provinciaNew.getLocalidades().add(localidad);
+                provinciaNew = em.merge(provinciaNew);
             }
             em.getTransaction().commit();
         } catch (Exception ex) {
@@ -189,7 +148,7 @@ public class LocalidadJpaController implements Serializable {
             }
         }
     }
-
+    
     public void destroy(Integer id) throws NonexistentEntityException {
         EntityManager em = null;
         try {
@@ -202,15 +161,10 @@ public class LocalidadJpaController implements Serializable {
             } catch (EntityNotFoundException enfe) {
                 throw new NonexistentEntityException("The localidad with id " + id + " no longer exists.", enfe);
             }
-            Provincia unaProvincia = localidad.getUnaProvincia();
-            if (unaProvincia != null) {
-                unaProvincia.getLocalidades().remove(localidad);
-                unaProvincia = em.merge(unaProvincia);
-            }
-            List<Cliente> clientes = localidad.getClientes();
-            for (Cliente clientesCliente : clientes) {
-                clientesCliente.setCiudad(null);
-                clientesCliente = em.merge(clientesCliente);
+            Provincia provincia = localidad.getProvincia();
+            if (provincia != null) {
+                provincia.getLocalidades().remove(localidad);
+                provincia = em.merge(provincia);
             }
             em.remove(localidad);
             em.getTransaction().commit();
@@ -220,15 +174,15 @@ public class LocalidadJpaController implements Serializable {
             }
         }
     }
-
+    
     public List<Localidad> findLocalidadEntities() {
         return findLocalidadEntities(true, -1, -1);
     }
-
+    
     public List<Localidad> findLocalidadEntities(int maxResults, int firstResult) {
         return findLocalidadEntities(false, maxResults, firstResult);
     }
-
+    
     private List<Localidad> findLocalidadEntities(boolean all, int maxResults, int firstResult) {
         EntityManager em = getEntityManager();
         try {
@@ -244,7 +198,7 @@ public class LocalidadJpaController implements Serializable {
             em.close();
         }
     }
-
+    
     public Localidad findLocalidad(Integer id) {
         EntityManager em = getEntityManager();
         try {
@@ -253,7 +207,7 @@ public class LocalidadJpaController implements Serializable {
             em.close();
         }
     }
-
+    
     public int getLocalidadCount() {
         EntityManager em = getEntityManager();
         try {

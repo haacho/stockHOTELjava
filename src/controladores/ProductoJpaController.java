@@ -66,10 +66,10 @@ public class ProductoJpaController implements Serializable {
         if (descripcion.equals("")) {
             throw new Exception("Ingrese una descripción");
         }
-        if (cantidad < 0) {
+        if (cantidad < 1) {
             throw new Exception("La cantidad de productos debe ser mayor o igual a 0");
         }
-        if (stockMinimo < 0) {
+        if (stockMinimo < 1) {
             throw new Exception("El stock mínimo de productos debe ser mayor o igual a 0");
         }
         if (precioCosto == null || precioCosto < 1) {

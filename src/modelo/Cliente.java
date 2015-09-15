@@ -11,8 +11,8 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
-import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 
 /**
  *
@@ -20,38 +20,35 @@ import javax.persistence.OneToMany;
  */
 @Entity
 public class Cliente implements Serializable {
+
     private static final long serialVersionUID = 1L;
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
     private String razonSocial;
     private String cuit;
-    private String direccion;
-    @ManyToOne
-    private Localidad ciudad;
-    private String zona;
+    @OneToOne
+    private Direccion direccion;
     private String telefono;
     @OneToMany(mappedBy = "cliente")
-    private List<Venta>ventas;
+    private List<Venta> ventas;
 
     public Cliente() {
     }
 
-    public Cliente(String razonSocial, String cuit, String direccion, Localidad ciudad, String zona, String telefono) {
+    public Cliente(String razonSocial, String cuit, Direccion direccion, String telefono) {
         this.razonSocial = razonSocial;
         this.cuit = cuit;
         this.direccion = direccion;
-        this.ciudad = ciudad;
-        this.zona = zona;
         this.telefono = telefono;
     }
 
-    public Localidad getCiudad() {
-        return ciudad;
+    public Direccion getDireccion() {
+        return direccion;
     }
 
-    public void setCiudad(Localidad ciudad) {
-        this.ciudad = ciudad;
+    public void setDireccion(Direccion direccion) {
+        this.direccion = direccion;
     }
 
     public String getTelefono() {
@@ -76,22 +73,6 @@ public class Cliente implements Serializable {
 
     public void setCuit(String cuit) {
         this.cuit = cuit;
-    }
-
-    public String getDireccion() {
-        return direccion;
-    }
-
-    public void setDireccion(String direccion) {
-        this.direccion = direccion;
-    }
-
-    public String getZona() {
-        return zona;
-    }
-
-    public void setZona(String zona) {
-        this.zona = zona;
     }
 
     public List<Venta> getVentas() {
@@ -134,5 +115,5 @@ public class Cliente implements Serializable {
     public String toString() {
         return "modelo.Cliente[ id=" + id + " ]";
     }
-    
+
 }

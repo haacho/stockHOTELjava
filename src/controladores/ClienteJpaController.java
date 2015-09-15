@@ -11,7 +11,6 @@ import javax.persistence.Query;
 import javax.persistence.EntityNotFoundException;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
-import modelo.Localidad;
 import modelo.Venta;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,61 +18,67 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.criteria.CriteriaBuilder;
 import modelo.Cliente;
-import modelo.Cliente_;
+import modelo.Direccion;
+import persistencia.sistema;
 
 /**
  *
- * @author hacho
+ * @author marcelo
  */
 public class ClienteJpaController implements Serializable {
-
+    
     public ClienteJpaController(EntityManagerFactory emf) {
         this.emf = emf;
     }
     private EntityManagerFactory emf = null;
-
+    
     public EntityManager getEntityManager() {
         return emf.createEntityManager();
     }
     
-    public void create(String razonSocial, String cuit, String direccion, Localidad ciudad, String zona, String telefono) throws Exception {
-        validate(razonSocial, null);
-        create(new Cliente(razonSocial, cuit, direccion, ciudad, zona, telefono));
+    public void create(String razonSocial, String cuit, String telefono, String calle, String numero, String piso, String departamento, Integer idLocalidad) throws Exception {
+        Direccion d = sistema.DIRECCION_JPA_CONTROLLER.create(calle, numero, piso, departamento, idLocalidad);
+        validate(razonSocial, cuit, telefono, null);
+        create(new Cliente(razonSocial, cuit, d, telefono));
     }
-
-    public void edit(Integer id, String razonSocial, String cuit, String direccion, Localidad ciudad, String zona, String telefono) throws Exception {
+    
+    public void edit(Integer id, String razonSocial, String cuit, String telefono, String calle, String numero, String piso, String departamento, Integer idLocalidad) throws Exception {
         if (findCliente(id) == null) {
             throw new Exception("Cliente no encontrado");
         }
         Cliente c = findCliente(id);
-        validate(razonSocial, c);
+        sistema.DIRECCION_JPA_CONTROLLER.edit(c.getDireccion().getId(), calle, numero, piso, departamento, idLocalidad);
+        validate(razonSocial, cuit, telefono, c);
         c.setRazonSocial(razonSocial);
         edit(c);
     }
-
-    public void validate(String nombre, Cliente c) throws Exception {
-        if (nombre.equals("")) {
+    
+    public void validate(String razonSocial, String cuit, String telefono, Cliente c) throws Exception {
+        if (razonSocial.equals("")) {
             throw new Exception("Ingrese la razón social");
         }
+        if (cuit.equals("")) {
+            throw new Exception("Ingrese el cuit");
+        }
         if (c == null) {
-            if (find(nombre) != null) {
-                throw new Exception("La razón social " + nombre + " ya existe");
+            if (find(cuit) != null) {
+                throw new Exception("El cliente con cuit " + cuit + " ya existe");
             }
         } else {
-            if (!c.getRazonSocial().equals(nombre) && find(nombre) != null) {
-                throw new Exception("La razón social " + nombre + " ya existe");
+            if (!c.getCuit().equals(cuit) && find(cuit) != null) {
+                throw new Exception("El cliente con cuit " + cuit + " ya existe");
             }
         }
     }
-
-    public Cliente find(String nombre) {
+    
+    public Cliente find(String cuit) {
         EntityManager em = getEntityManager();
         CriteriaBuilder cb = em.getCriteriaBuilder();
         Cliente res = null;
         try {
             CriteriaQuery cq = cb.createQuery();
             Root e = cq.from(Cliente.class);
-            cq.where(cb.equal(e.get(Cliente_.razonSocial), nombre));
+            cq.where(cb.equal(e.get(Cliente_.cuit), cuit));
             Query query = em.createQuery(cq);
             List<Cliente> aux = query.getResultList();
             res = aux.isEmpty() ? null : (Cliente) aux.get(0);
@@ -83,7 +88,6 @@ public class ClienteJpaController implements Serializable {
         return res;
     }
     
-
     public void create(Cliente cliente) {
         if (cliente.getVentas() == null) {
             cliente.setVentas(new ArrayList<Venta>());
@@ -92,11 +96,6 @@ public class ClienteJpaController implements Serializable {
         try {
             em = getEntityManager();
             em.getTransaction().begin();
-            Localidad ciudad = cliente.getCiudad();
-            if (ciudad != null) {
-                ciudad = em.getReference(ciudad.getClass(), ciudad.getId());
-                cliente.setCiudad(ciudad);
-            }
             List<Venta> attachedVentas = new ArrayList<Venta>();
             for (Venta ventasVentaToAttach : cliente.getVentas()) {
                 ventasVentaToAttach = em.getReference(ventasVentaToAttach.getClass(), ventasVentaToAttach.getId());
@@ -104,10 +103,6 @@ public class ClienteJpaController implements Serializable {
             }
             cliente.setVentas(attachedVentas);
             em.persist(cliente);
-            if (ciudad != null) {
-                ciudad.getClientes().add(cliente);
-                ciudad = em.merge(ciudad);
-            }
             for (Venta ventasVenta : cliente.getVentas()) {
                 Cliente oldClienteOfVentasVenta = ventasVenta.getCliente();
                 ventasVenta.setCliente(cliente);
@@ -124,21 +119,15 @@ public class ClienteJpaController implements Serializable {
             }
         }
     }
-
+    
     public void edit(Cliente cliente) throws NonexistentEntityException, Exception {
         EntityManager em = null;
         try {
             em = getEntityManager();
             em.getTransaction().begin();
             Cliente persistentCliente = em.find(Cliente.class, cliente.getId());
-            Localidad ciudadOld = persistentCliente.getCiudad();
-            Localidad ciudadNew = cliente.getCiudad();
             List<Venta> ventasOld = persistentCliente.getVentas();
             List<Venta> ventasNew = cliente.getVentas();
-            if (ciudadNew != null) {
-                ciudadNew = em.getReference(ciudadNew.getClass(), ciudadNew.getId());
-                cliente.setCiudad(ciudadNew);
-            }
             List<Venta> attachedVentasNew = new ArrayList<Venta>();
             for (Venta ventasNewVentaToAttach : ventasNew) {
                 ventasNewVentaToAttach = em.getReference(ventasNewVentaToAttach.getClass(), ventasNewVentaToAttach.getId());
@@ -147,14 +136,6 @@ public class ClienteJpaController implements Serializable {
             ventasNew = attachedVentasNew;
             cliente.setVentas(ventasNew);
             cliente = em.merge(cliente);
-            if (ciudadOld != null && !ciudadOld.equals(ciudadNew)) {
-                ciudadOld.getClientes().remove(cliente);
-                ciudadOld = em.merge(ciudadOld);
-            }
-            if (ciudadNew != null && !ciudadNew.equals(ciudadOld)) {
-                ciudadNew.getClientes().add(cliente);
-                ciudadNew = em.merge(ciudadNew);
-            }
             for (Venta ventasOldVenta : ventasOld) {
                 if (!ventasNew.contains(ventasOldVenta)) {
                     ventasOldVenta.setCliente(null);
@@ -188,7 +169,7 @@ public class ClienteJpaController implements Serializable {
             }
         }
     }
-
+    
     public void destroy(Integer id) throws NonexistentEntityException {
         EntityManager em = null;
         try {
@@ -200,11 +181,6 @@ public class ClienteJpaController implements Serializable {
                 cliente.getId();
             } catch (EntityNotFoundException enfe) {
                 throw new NonexistentEntityException("The cliente with id " + id + " no longer exists.", enfe);
-            }
-            Localidad ciudad = cliente.getCiudad();
-            if (ciudad != null) {
-                ciudad.getClientes().remove(cliente);
-                ciudad = em.merge(ciudad);
             }
             List<Venta> ventas = cliente.getVentas();
             for (Venta ventasVenta : ventas) {
@@ -219,15 +195,15 @@ public class ClienteJpaController implements Serializable {
             }
         }
     }
-
+    
     public List<Cliente> findClienteEntities() {
         return findClienteEntities(true, -1, -1);
     }
-
+    
     public List<Cliente> findClienteEntities(int maxResults, int firstResult) {
         return findClienteEntities(false, maxResults, firstResult);
     }
-
+    
     private List<Cliente> findClienteEntities(boolean all, int maxResults, int firstResult) {
         EntityManager em = getEntityManager();
         try {
@@ -243,7 +219,7 @@ public class ClienteJpaController implements Serializable {
             em.close();
         }
     }
-
+    
     public Cliente findCliente(Integer id) {
         EntityManager em = getEntityManager();
         try {
@@ -252,7 +228,7 @@ public class ClienteJpaController implements Serializable {
             em.close();
         }
     }
-
+    
     public int getClienteCount() {
         EntityManager em = getEntityManager();
         try {
