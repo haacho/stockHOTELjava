@@ -7,16 +7,18 @@ package controladores;
 
 import controladores.exceptions.NonexistentEntityException;
 import java.io.Serializable;
-import java.util.Calendar;
-import java.util.List;
-import javax.persistence.EntityManager;
-import javax.persistence.EntityManagerFactory;
 import javax.persistence.Query;
 import javax.persistence.EntityNotFoundException;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
 import modelo.Cliente;
 import modelo.RenglonVenta;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+import javax.persistence.EntityManager;
+import javax.persistence.EntityManagerFactory;
+import modelo.ContenedorRenglon;
 import modelo.Venta;
 import persistencia.sistema;
 
@@ -35,35 +37,29 @@ public class VentaJpaController implements Serializable {
         return emf.createEntityManager();
     }
 
-    public void create(Calendar fecha, Integer idCliente, List<RenglonVenta> productos, double porcentajeDescuento) throws Exception {
+    public void create(Calendar fecha, Integer idCliente, List<ContenedorRenglon> productos, double porcentajeDescuento) throws Exception {
         validate(productos);
-        persistirRenglones(productos);
-        create(new Venta(fecha, sistema.CLIENTE_JPA_CONTROLLER.findCliente(idCliente), productos, porcentajeDescuento));
+        Venta unaVenta = new Venta(fecha, sistema.CLIENTE_JPA_CONTROLLER.findCliente(idCliente), porcentajeDescuento);
+        create(unaVenta);
+        persistirRenglones(productos, unaVenta);
     }
 
-    public void edit(Integer id, List<RenglonVenta> productos) throws Exception {
-        if (findVenta(id) == null) {
-            throw new Exception("Venta no encontrada");
-        }
-        Venta c = findVenta(id);
-        validate(productos);
-        c.setRenglones(productos);
-        edit(c);
-    }
-
-    public void validate(List<RenglonVenta> productos) throws Exception {
+    public void validate(List<ContenedorRenglon> productos) throws Exception {
         if (productos.isEmpty()) {
             throw new Exception("La lista de productos se encuentra vacía");
         }
     }
 
-    private void persistirRenglones(List<RenglonVenta> productos) {
-        for (RenglonVenta unRenglon : productos) {
-            sistema.RENGLON_JPA_CONTROLLER.create(unRenglon);
+    private void persistirRenglones(List<ContenedorRenglon> productos, Venta unaVenta) throws Exception {
+        for (ContenedorRenglon unContnedor : productos) {
+            sistema.RENGLON_JPA_CONTROLLER.create(unContnedor, unaVenta);
         }
     }
 
     public void create(Venta venta) {
+        if (venta.getRenglonVentas() == null) {
+            venta.setRenglonVentas(new ArrayList<RenglonVenta>());
+        }
         EntityManager em = null;
         try {
             em = getEntityManager();
@@ -73,10 +69,25 @@ public class VentaJpaController implements Serializable {
                 cliente = em.getReference(cliente.getClass(), cliente.getId());
                 venta.setCliente(cliente);
             }
+            List<RenglonVenta> attachedRenglonVentas = new ArrayList<RenglonVenta>();
+            for (RenglonVenta renglonVentasRenglonVentaToAttach : venta.getRenglonVentas()) {
+                renglonVentasRenglonVentaToAttach = em.getReference(renglonVentasRenglonVentaToAttach.getClass(), renglonVentasRenglonVentaToAttach.getId());
+                attachedRenglonVentas.add(renglonVentasRenglonVentaToAttach);
+            }
+            venta.setRenglonVentas(attachedRenglonVentas);
             em.persist(venta);
             if (cliente != null) {
                 cliente.getVentas().add(venta);
                 cliente = em.merge(cliente);
+            }
+            for (RenglonVenta renglonVentasRenglonVenta : venta.getRenglonVentas()) {
+                Venta oldVentaPertenecienteOfRenglonVentasRenglonVenta = renglonVentasRenglonVenta.getVentaPerteneciente();
+                renglonVentasRenglonVenta.setVentaPerteneciente(venta);
+                renglonVentasRenglonVenta = em.merge(renglonVentasRenglonVenta);
+                if (oldVentaPertenecienteOfRenglonVentasRenglonVenta != null) {
+                    oldVentaPertenecienteOfRenglonVentasRenglonVenta.getRenglonVentas().remove(renglonVentasRenglonVenta);
+                    oldVentaPertenecienteOfRenglonVentasRenglonVenta = em.merge(oldVentaPertenecienteOfRenglonVentasRenglonVenta);
+                }
             }
             em.getTransaction().commit();
         } finally {
@@ -94,10 +105,19 @@ public class VentaJpaController implements Serializable {
             Venta persistentVenta = em.find(Venta.class, venta.getId());
             Cliente clienteOld = persistentVenta.getCliente();
             Cliente clienteNew = venta.getCliente();
+            List<RenglonVenta> renglonVentasOld = persistentVenta.getRenglonVentas();
+            List<RenglonVenta> renglonVentasNew = venta.getRenglonVentas();
             if (clienteNew != null) {
                 clienteNew = em.getReference(clienteNew.getClass(), clienteNew.getId());
                 venta.setCliente(clienteNew);
             }
+            List<RenglonVenta> attachedRenglonVentasNew = new ArrayList<RenglonVenta>();
+            for (RenglonVenta renglonVentasNewRenglonVentaToAttach : renglonVentasNew) {
+                renglonVentasNewRenglonVentaToAttach = em.getReference(renglonVentasNewRenglonVentaToAttach.getClass(), renglonVentasNewRenglonVentaToAttach.getId());
+                attachedRenglonVentasNew.add(renglonVentasNewRenglonVentaToAttach);
+            }
+            renglonVentasNew = attachedRenglonVentasNew;
+            venta.setRenglonVentas(renglonVentasNew);
             venta = em.merge(venta);
             if (clienteOld != null && !clienteOld.equals(clienteNew)) {
                 clienteOld.getVentas().remove(venta);
@@ -106,6 +126,23 @@ public class VentaJpaController implements Serializable {
             if (clienteNew != null && !clienteNew.equals(clienteOld)) {
                 clienteNew.getVentas().add(venta);
                 clienteNew = em.merge(clienteNew);
+            }
+            for (RenglonVenta renglonVentasOldRenglonVenta : renglonVentasOld) {
+                if (!renglonVentasNew.contains(renglonVentasOldRenglonVenta)) {
+                    renglonVentasOldRenglonVenta.setVentaPerteneciente(null);
+                    renglonVentasOldRenglonVenta = em.merge(renglonVentasOldRenglonVenta);
+                }
+            }
+            for (RenglonVenta renglonVentasNewRenglonVenta : renglonVentasNew) {
+                if (!renglonVentasOld.contains(renglonVentasNewRenglonVenta)) {
+                    Venta oldVentaPertenecienteOfRenglonVentasNewRenglonVenta = renglonVentasNewRenglonVenta.getVentaPerteneciente();
+                    renglonVentasNewRenglonVenta.setVentaPerteneciente(venta);
+                    renglonVentasNewRenglonVenta = em.merge(renglonVentasNewRenglonVenta);
+                    if (oldVentaPertenecienteOfRenglonVentasNewRenglonVenta != null && !oldVentaPertenecienteOfRenglonVentasNewRenglonVenta.equals(venta)) {
+                        oldVentaPertenecienteOfRenglonVentasNewRenglonVenta.getRenglonVentas().remove(renglonVentasNewRenglonVenta);
+                        oldVentaPertenecienteOfRenglonVentasNewRenglonVenta = em.merge(oldVentaPertenecienteOfRenglonVentasNewRenglonVenta);
+                    }
+                }
             }
             em.getTransaction().commit();
         } catch (Exception ex) {
@@ -140,6 +177,11 @@ public class VentaJpaController implements Serializable {
             if (cliente != null) {
                 cliente.getVentas().remove(venta);
                 cliente = em.merge(cliente);
+            }
+            List<RenglonVenta> renglonVentas = venta.getRenglonVentas();
+            for (RenglonVenta renglonVentasRenglonVenta : renglonVentas) {
+                renglonVentasRenglonVenta.setVentaPerteneciente(null);
+                renglonVentasRenglonVenta = em.merge(renglonVentasRenglonVenta);
             }
             em.remove(venta);
             em.getTransaction().commit();

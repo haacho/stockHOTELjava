@@ -14,7 +14,10 @@ import javax.persistence.Query;
 import javax.persistence.EntityNotFoundException;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
+import modelo.ContenedorRenglon;
 import modelo.RenglonVenta;
+import modelo.Venta;
+import persistencia.sistema;
 
 /**
  *
@@ -31,12 +34,25 @@ public class RenglonVentaJpaController implements Serializable {
         return emf.createEntityManager();
     }
 
+    public void create(ContenedorRenglon contenedor, Venta unaVenta) throws Exception {
+        create(new RenglonVenta(sistema.PRODUCTO_JPA_CONTROLLER.findProducto(contenedor.getIdProducto()), contenedor.getCantProducto(), unaVenta));
+    }
+
     public void create(RenglonVenta renglonVenta) {
         EntityManager em = null;
         try {
             em = getEntityManager();
             em.getTransaction().begin();
+            Venta ventaPerteneciente = renglonVenta.getVentaPerteneciente();
+            if (ventaPerteneciente != null) {
+                ventaPerteneciente = em.getReference(ventaPerteneciente.getClass(), ventaPerteneciente.getId());
+                renglonVenta.setVentaPerteneciente(ventaPerteneciente);
+            }
             em.persist(renglonVenta);
+            if (ventaPerteneciente != null) {
+                ventaPerteneciente.getRenglonVentas().add(renglonVenta);
+                ventaPerteneciente = em.merge(ventaPerteneciente);
+            }
             em.getTransaction().commit();
         } finally {
             if (em != null) {
@@ -50,7 +66,22 @@ public class RenglonVentaJpaController implements Serializable {
         try {
             em = getEntityManager();
             em.getTransaction().begin();
+            RenglonVenta persistentRenglonVenta = em.find(RenglonVenta.class, renglonVenta.getId());
+            Venta ventaPertenecienteOld = persistentRenglonVenta.getVentaPerteneciente();
+            Venta ventaPertenecienteNew = renglonVenta.getVentaPerteneciente();
+            if (ventaPertenecienteNew != null) {
+                ventaPertenecienteNew = em.getReference(ventaPertenecienteNew.getClass(), ventaPertenecienteNew.getId());
+                renglonVenta.setVentaPerteneciente(ventaPertenecienteNew);
+            }
             renglonVenta = em.merge(renglonVenta);
+            if (ventaPertenecienteOld != null && !ventaPertenecienteOld.equals(ventaPertenecienteNew)) {
+                ventaPertenecienteOld.getRenglonVentas().remove(renglonVenta);
+                ventaPertenecienteOld = em.merge(ventaPertenecienteOld);
+            }
+            if (ventaPertenecienteNew != null && !ventaPertenecienteNew.equals(ventaPertenecienteOld)) {
+                ventaPertenecienteNew.getRenglonVentas().add(renglonVenta);
+                ventaPertenecienteNew = em.merge(ventaPertenecienteNew);
+            }
             em.getTransaction().commit();
         } catch (Exception ex) {
             String msg = ex.getLocalizedMessage();
@@ -79,6 +110,11 @@ public class RenglonVentaJpaController implements Serializable {
                 renglonVenta.getId();
             } catch (EntityNotFoundException enfe) {
                 throw new NonexistentEntityException("The renglonVenta with id " + id + " no longer exists.", enfe);
+            }
+            Venta ventaPerteneciente = renglonVenta.getVentaPerteneciente();
+            if (ventaPerteneciente != null) {
+                ventaPerteneciente.getRenglonVentas().remove(renglonVenta);
+                ventaPerteneciente = em.merge(ventaPerteneciente);
             }
             em.remove(renglonVenta);
             em.getTransaction().commit();
@@ -134,5 +170,5 @@ public class RenglonVentaJpaController implements Serializable {
             em.close();
         }
     }
-    
+
 }

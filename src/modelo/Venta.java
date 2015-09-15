@@ -13,6 +13,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Temporal;
 
 /**
@@ -30,16 +31,16 @@ public class Venta implements Serializable {
     private Calendar fecha;
     @ManyToOne
     private Cliente cliente;
-    private List <RenglonVenta> renglones;
     private double porcentajeDescuento;
+    @OneToMany(mappedBy = "ventaPerteneciente")
+    private List<RenglonVenta> renglonVentas;
 
     public Venta() {
     }
 
-    public Venta(Calendar fecha, Cliente cliente, List<RenglonVenta> renglones, double porcentajeDescuento) {
+    public Venta(Calendar fecha, Cliente cliente, double porcentajeDescuento) {
         this.fecha = fecha;
         this.cliente = cliente;
-        this.renglones = renglones;
         this.porcentajeDescuento = porcentajeDescuento;
     }
 
@@ -75,12 +76,12 @@ public class Venta implements Serializable {
         this.cliente = cliente;
     }
 
-    public List<RenglonVenta> getRenglones() {
-        return renglones;
+    public List<RenglonVenta> getRenglonVentas() {
+        return renglonVentas;
     }
 
-    public void setRenglones(List<RenglonVenta> renglones) {
-        this.renglones = renglones;
+    public void setRenglonVentas(List<RenglonVenta> renglonVentas) {
+        this.renglonVentas = renglonVentas;
     }
 
     @Override
@@ -107,7 +108,7 @@ public class Venta implements Serializable {
 //            TOTAL DE LA VENTA REALIZADA, A PARTIR DE LOS PRECIOS DE LOS PRODUCTOS;   
     public double costoTotal() {
         double total = 0;
-        for (RenglonVenta renglonVenta : this.getRenglones()) {
+        for (RenglonVenta renglonVenta : this.getRenglonVentas()) {
             total = + renglonVenta.costoRenglon();
         }
         total = -(total * this.porcentajeDescuento / 100);

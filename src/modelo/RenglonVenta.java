@@ -10,6 +10,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 
 /**
  *
@@ -24,13 +25,16 @@ public class RenglonVenta implements Serializable {
     private Long id;
     private Producto producto;
     private Integer cantidad;
+    @ManyToOne
+    private Venta ventaPerteneciente;
 
     public RenglonVenta() {
     }
 
-    public RenglonVenta(Producto producto, Integer cantidad) {
+    public RenglonVenta(Producto producto, Integer cantidad, Venta ventaPerteneciente) {
         this.producto = producto;
         this.cantidad = cantidad;
+        this.ventaPerteneciente = ventaPerteneciente;
     }
 
     public Long getId() {
@@ -41,6 +45,14 @@ public class RenglonVenta implements Serializable {
         this.id = id;
     }
 
+    public Venta getVentaPerteneciente() {
+        return ventaPerteneciente;
+    }
+
+    public void setVentaPerteneciente(Venta ventaPerteneciente) {
+        this.ventaPerteneciente = ventaPerteneciente;
+    }
+    
     public Producto getProducto() {
         return producto;
     }

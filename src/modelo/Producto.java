@@ -6,11 +6,13 @@
 package modelo;
 
 import java.io.Serializable;
+import java.util.List;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 
 /**
  *
@@ -31,6 +33,8 @@ public class Producto implements Serializable {
     private Integer stockMinimo;
     @ManyToOne
     private Categoria categoria;
+    @OneToMany(mappedBy = "producto")
+    private List<RenglonVenta> renglonVentas;
 
     public Producto() {
     }
